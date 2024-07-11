@@ -6,12 +6,14 @@ algos=(1 2)
 heuristics=(1 2 3)
 rounds=5
 
-pipenv shell
+echo "If you run into errors, try pipenv shell before running"
 
-echo "This will destroy the files in /solvable/ are you sure?"
+echo "This will destroy the files in /solvable/ and /reports/"
+echo "are you sure?"
 read -p "Press [Enter] to continue or [Ctrl+C] to cancel..."
 
 rm -rf solvable
+rm -rf reports
 
 # Create 5 solvable puzzles
 echo "Generating $rounds solvable puzzles..." 

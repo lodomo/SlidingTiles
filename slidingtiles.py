@@ -267,7 +267,7 @@ def h3_pnld(puzzle):
     # Combines Misplaced Tiles and Manhattan Distance
     misplaced = h1_misplaced(puzzle)
     manhattan = h2_manhattan(puzzle)
-    pnld = misplaced * manhattan
+    pnld = misplaced + manhattan
     verbose(f"PNLD: {pnld}\n")
     return pnld
 
