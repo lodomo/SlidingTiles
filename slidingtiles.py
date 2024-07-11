@@ -30,11 +30,13 @@ def main(argv):
     solution = SETTINGS["Algorithm"](
         puzzle, SETTINGS["solve_state"], SETTINGS["Heuristic"]
     )
+
     if SETTINGS["verbose"] > 1:
         for step in solution:
             print(f"{b_replace(step)}")
 
     print(f"Total Steps: {len(solution)}")
+    generate_report(puzzle, solution)
     exit(0)
 
 
@@ -54,7 +56,7 @@ def set_puzzle():
 def process_command_line(argv):
     options = "hvsrH:a:g:"
     DEFAULT_SIZE = 9
-    HEURISTICS = [h1_misplaced, h2_manhattan, h3_tbd]
+    HEURISTICS = [h1_misplaced, h2_manhattan, h3_pnld]
     ALGORITHMS = [best_first_search, a_star]
     SETTINGS["verbose"] = 0  # Verbose mode
     SETTINGS["random"] = False  # Random mode
@@ -101,9 +103,12 @@ def process_command_line(argv):
             generate_solvable(int(arg))
             exit(0)
 
+    setup_after_command_line()
+    return
 
+
+def setup_after_command_line():
     SETTINGS["matrix_dim"] = int(SETTINGS["size"] ** 0.5)
-    verbose(f"Size: {SETTINGS['size']}\n")
 
     if SETTINGS["matrix_dim"] ** 2 != SETTINGS["size"]:
         print("Invalid size: Size is not a square number")
@@ -257,8 +262,14 @@ def h2_manhattan(puzzle):
     return distance
 
 
-def h3_tbd(puzzle):
-    pass
+def h3_pnld(puzzle):
+    # My Heuristic "Porque No Los Dos" PNLD
+    # Combines Misplaced Tiles and Manhattan Distance
+    misplaced = h1_misplaced(puzzle)
+    manhattan = h2_manhattan(puzzle)
+    pnld = misplaced * manhattan
+    verbose(f"PNLD: {pnld}\n")
+    return pnld
 
 
 def b_replace(puzzle, as_matrix=False):
@@ -352,12 +363,56 @@ def lazy_hash(puzzle):
 
 
 def generate_report(puzzle, solution):
-    print("Not implemented")
-    return None
+    dir = "./reports"
+    dir += f"/{SETTINGS['Algorithm'].__name__}"
+    dir += f"_{SETTINGS['Heuristic'].__name__}"
+    dir += f"_{SETTINGS['size']}"
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    filename = f"{b_replace(puzzle)}"
+    # Remove all excess characters
+    filename = filename.replace("[", "")
+    filename = filename.replace("]", "")
+    filename = filename.replace(" ", "")
+
+    steps = len(solution)
+
+    filename = dir + f"/{filename}_{steps}.txt"
+
+    with open(filename, "w") as f:
+        f.write(f"{b_replace(puzzle)} ")
+        for step in solution:
+            f.write(f"{b_replace(step)} ")
+    print(f"Report generated: {filename}")
+    return
+
 
 def generate_solvable(n):
     # Create directory called "solvable" if it doesn't exist
-    
+    if not os.path.exists("solvable"):
+        os.makedirs("solvable")
+
+    # Create n solvable puzzles
+    for i in range(n):
+        puzzle = random_puzzle(SETTINGS["size"])
+
+        # Write the puzzle to a file
+        text = f"{b_replace(puzzle)}"
+        # remove the brackets
+        text = text.replace("[", "")
+        text = text.replace("]", "")
+
+        title = text.replace(" ", "")
+
+        # check if title already exists
+        if os.path.exists(f"solvable/{title}.txt"):
+            i -= 1
+            continue
+
+        with open(f"solvable/{title}.txt", "w") as f:
+            f.write(text)
+            f.write("\n")
 
 
 def best_first_search(puzzle, solve_state, h_func):
