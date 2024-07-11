@@ -13,7 +13,6 @@
 ###############################################################################
 
 import getopt
-import heapq
 import os
 import sys
 
@@ -24,17 +23,20 @@ MATRIX_DIM = 3
 
 
 def main(argv):
+    sys.setrecursionlimit(100000)
     process_command_line(argv)
     puzzle = set_puzzle()
 
-    solution = SETTINGS["Algorithm"](
-        puzzle, SETTINGS["solve_state"], SETTINGS["Heuristic"]
-    )
-    if SETTINGS["verbose"] > 1:
-        for step in solution:
-            print(f"{b_replace(step)}")
+    verbose("Starting Search\n", 2)
+    verbose(f"Start State: {b_replace(puzzle)}\n")
 
-    print(f"Total Steps: {len(solution)}")
+    previous_states = {}
+    solution = SETTINGS["Algorithm"](puzzle, previous_states)
+    if solution is None:
+        print("No solution found")
+    else:
+        generate_report(puzzle, solution)
+        verbose("Solution:\n")
     exit(0)
 
 
@@ -52,7 +54,7 @@ def set_puzzle():
 
 
 def process_command_line(argv):
-    options = "hvsrH:a:g:"
+    options = "hvsrH:a:"
     DEFAULT_SIZE = 9
     HEURISTICS = [h1_misplaced, h2_manhattan, h3_tbd]
     ALGORITHMS = [best_first_search, a_star]
@@ -97,10 +99,6 @@ def process_command_line(argv):
                 print("Run with -h for help")
                 sys.exit(2)
             SETTINGS["Algorithm"] = ALGORITHMS[algorithm - 1]
-        elif opt in ("-g", "--generate"):
-            generate_solvable(int(arg))
-            exit(0)
-
 
     SETTINGS["matrix_dim"] = int(SETTINGS["size"] ** 0.5)
     verbose(f"Size: {SETTINGS['size']}\n")
@@ -219,6 +217,7 @@ def solvable(puzzle):
 
 
 def h1_misplaced(puzzle):
+    verbose("Start Misplaced Tiles\n", 2)
     misplaced = 0
     for i in range(len(puzzle)):
         # Don't count the blank tile
@@ -231,13 +230,15 @@ def h1_misplaced(puzzle):
             misplaced += 1
             verbose(f"{puzzle[i]} ", 2)
     verbose(f"Misplaced tiles: {misplaced}\n")
+    verbose("End Misplaced Tiles\n", 2)
     return misplaced
 
 
 def h2_manhattan(puzzle):
+    verbose("Start Manhattan Distance\n", 2)
     distance = 0
-    matrix_dim = int(len(puzzle) ** 0.5)
     verbose("(COL,ROW) -> (COL,ROW)\n", 2)
+    matrix_dim = int(len(puzzle) ** 0.5)
     for i in range(len(puzzle)):
         if puzzle[i] == 0:
             continue
@@ -262,10 +263,6 @@ def h3_tbd(puzzle):
 
 
 def b_replace(puzzle, as_matrix=False):
-    # This will replace the 0 with a b
-    # If as_matrix is True, the puzzle will be printed as a matrix
-    # This helps with trouble shooting and debugging to make
-    # sure the moves are happening properly
     if as_matrix:
         dim = SETTINGS["matrix_dim"]
         string = ""
@@ -289,9 +286,6 @@ def b_replace(puzzle, as_matrix=False):
 
 
 def legal_moves(puzzle):
-    # This returns all legal moves. It does not account for any heuristics.
-    # It simply returns all the possible moves that can be made from this
-    # Position
     dim = SETTINGS["matrix_dim"]
     moves = []
     # Find all the combinations of the puzzle for a single move
@@ -336,15 +330,107 @@ def legal_moves(puzzle):
     return moves
 
 
+def a_star(puzzle, previous_states):
+    # Wrapper for the recursive function
+    verbose("A* Search\n")
+    return _a_star(puzzle, previous_states, 0)
+
+
+def _a_star(puzzle, previous_states, depth):
+    # Base Case Return the Solved State
+    h_val = SETTINGS["Heuristic"](puzzle)
+    if h_val == 0:
+        # An empty list is returned to signal the end of the solution
+        return []
+
+    if bad_hash(puzzle) in previous_states:
+        if previous_states[bad_hash(puzzle)] <= depth:
+            return None
+    else:
+        previous_states[bad_hash(puzzle)] = depth
+
+    moves = legal_moves(puzzle)
+    m_h = []
+    for move in moves:
+        m_h.append([SETTINGS["Heuristic"](move), move])
+
+    # sort by heuristic
+    m_h.sort(key=lambda x: x[0])
+
+    verbose(f"Start State: \n{b_replace(puzzle)}\n", 2)
+    verbose(f"Start Heuristic: {h_val}\n", 2)
+    verbose(f"Moves: {len(moves)}\n", 2)
+    verbose("Moves: \n", 2)
+
+    for move in m_h:
+        verbose(f"{b_replace(move[1])} Heuristic: {move[0]}\n", 2)
+
+    pos_solution = None
+    for move in m_h:
+        temp = _a_star(move[1], previous_states, depth + 1)
+        if temp is not None:
+            if pos_solution is None or len(temp) < len(pos_solution):
+                pos_solution = [move[1]] + temp
+
+    # This could be None (and is likely none) if no solution was found.
+    return pos_solution
+
+
+def best_first_search(puzzle, previous_states):
+    # Wrapper for best first. Only needed for verbose mode.
+    verbose("Start Best-First Search\n")
+    return _best_first_search(puzzle, previous_states)
+
+
+def _best_first_search(puzzle, previous_states):
+    # Base Case Return the Solved State
+    h_val = SETTINGS["Heuristic"](puzzle)
+    if h_val == 0:
+        # An empty list is returned to signal the end of the solution
+        return []
+
+    # If the state has been visited before, return None
+    # Otherwise, store the state in the dictionary as visited
+    solution = []
+    if bad_hash(puzzle) in previous_states:
+        return None
+    else:
+        previous_states[bad_hash(puzzle)] = True
+
+    moves = legal_moves(puzzle)
+    m_h = []
+    for move in moves:
+        m_h.append([SETTINGS["Heuristic"](move), move])
+
+    # sort by heuristic
+    m_h.sort(key=lambda x: x[0])
+
+    verbose(f"Start State: \n{b_replace(puzzle)}\n", 2)
+    verbose(f"Start Heuristic: {h_val}\n", 2)
+    verbose(f"Moves: {len(moves)}\n", 2)
+    verbose("Moves: \n", 2)
+    for move in m_h:
+        verbose(f"{b_replace(move[1])} Heuristic: {move[0]}\n", 2)
+
+    for move in m_h:
+        verbose(f"Move: {b_replace(move[1])}\n", 2)
+
+        temp = best_first_search(move[1], previous_states)
+        if temp is not None:
+            solution = [move[1]] + temp
+            return solution
+
+    # No solution found
+    return None
+
+
 def solved_state():
-    # Returns the solved state of the puzzle.
-    # Not hardcoded to support different sizes for the puzzle
     solved = np.array(range(1, SETTINGS["size"] + 1))
     solved[SETTINGS["size"] - 1] = 0
     return solved
 
 
-def lazy_hash(puzzle):
+def bad_hash(puzzle):
     str = ""
     for i in range(len(puzzle)):
         str += "{:02d}".format(puzzle[i])
@@ -352,126 +438,51 @@ def lazy_hash(puzzle):
 
 
 def generate_report(puzzle, solution):
-    print("Not implemented")
-    return None
+    name_of_algorithm = SETTINGS["Algorithm"].__name__
+    name_of_heuristic = SETTINGS["Heuristic"].__name__
 
-def generate_solvable(n):
-    # Create directory called "solvable" if it doesn't exist
-    
+    if name_of_algorithm == "best_first_search":
+        name_of_algorithm = "Best-First Search"
+    else:
+        name_of_algorithm = "A* Algorithm"
 
+    if name_of_heuristic == "h1_misplaced":
+        name_of_heuristic = "Misplaced Tiles"
+    elif name_of_heuristic == "h2_manhattan":
+        name_of_heuristic = "Manhattan Distance"
+    else:
+        name_of_heuristic = "TBD"
 
-def best_first_search(puzzle, solve_state, h_func):
-    # Best First Search will use the heuristic to determine the best
-    # next move to take. It will keep making the best move until it
-    # finds a solution. This is a guaranteed result, but not the shortest
-    # path since it doesn't take steps into account.
+    # Create the directory if it doesn't exist
+    directory = "./reports/"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
-    start_state = puzzle
-    visited = {}
+    # Create the file if it doesn't exist
+    noa = name_of_algorithm.replace(" ", "_")
+    noh = name_of_heuristic.replace(" ", "_")
+    file_name = f"{directory}{noa}_{noh}.txt"
 
-    # Create the initial node
-    root = Node(start_state, h_func(start_state))
+    if not os.path.exists(file_name):
+        header = f"Algorithm: {name_of_algorithm}\n"
+        header += f"Heuristic: {name_of_heuristic}\n"
+        with open(file_name, "w") as file:
+            file.write(header)
 
-    # Create a queue of nodes to visit
-    frontier = [root]
-    heapq.heapify(frontier)
+    string = f"{len(solution)}: \t"
+    puzzle_as_string = b_replace(puzzle)
+    puzzle_as_string = puzzle_as_string.replace("\n", "_")
+    puzzle_as_string = puzzle_as_string.replace(" ", "")
+    puzzle_as_string = puzzle_as_string.replace("[", "")
+    puzzle_as_string = puzzle_as_string.replace("]", "")
+    string += f"{puzzle_as_string} -> "
+    for state in solution:
+        string += f"{b_replace(state)}->"
+    string = string[:-2] + "\n"
 
-    # While there are still nodes to visit, keep going
-    while len(frontier) > 0:
-        # Get the node with the lowest heuristic value
-        # The f == h for this algorithm.
-        node = heapq.heappop(frontier)
-
-        # Check if the node is the solution
-        if lazy_hash(node.state) == lazy_hash(solve_state):
-            solution = []
-            while node is not None:
-                solution.insert(0, node.state)
-                node = node.parent
-            return solution
-
-        # Add the node to the visited list
-        visited[lazy_hash(node.state)] = node.f
-
-        # Get all the legal moves
-        moves = legal_moves(node.state)
-
-        # Create the new nodes
-        for move in moves:
-            new_node = Node(move, h_func(move), node)
-            if lazy_hash(new_node.state) not in visited:
-                heapq.heappush(frontier, new_node)
-
-
-def a_star(puzzle, solve_state, h_func):
-    # A* is uses most of the same code as Best First Search, but it
-    # takes into account the steps taken to get to the current state.
-    # This will guarantee the shortest path to the solution, but might take
-    # longer to find the solution
-
-    start_state = puzzle
-    visited = {}
-
-    # Create the initial node
-    root = Node(start_state, h_func(start_state), g=0)
-
-    # Create a queue of nodes to visit
-    frontier = [root]
-    heapq.heapify(frontier)
-
-    # While there are still nodes to visit, keep going
-    while len(frontier) > 0:
-        # Get the node with the lowest f value (g + h)
-        node = heapq.heappop(frontier)
-
-        # Check if the node is the solution
-        if lazy_hash(node.state) == lazy_hash(solve_state):
-            solution = []
-            while node is not None:
-                solution.insert(0, node.state)
-                node = node.parent
-            return solution
-
-        # Add the node to the visited list
-        visited[lazy_hash(node.state)] = node.f
-
-        # Get all the legal moves
-        moves = legal_moves(node.state)
-
-        # Create the new nodes
-        for move in moves:
-            new_node = Node(move, h_func(move), node, node.g + 1)
-            if lazy_hash(new_node.state) not in visited:
-                heapq.heappush(frontier, new_node)
-            elif visited[lazy_hash(new_node.state)] > node.f:
-                heapq.heappush(frontier, new_node)
-
-    return None
-
-
-class Node:
-    def __init__(self, state, h, parent=None, g=0):
-        self.parent = parent
-        self.state = state
-        self.h = h
-        self.g = g
-        self.f = g + h
-        return
-
-    def __lt__(self, other):
-        return self.f < other.f
-
-    def __eq__(self, other):
-        return self.state == other.state
-
-    def __lte__(self, other):
-        return self.f <= other.f
-
-    def __gt__(self, other):
-        return self.f > other.f
-
-    def __gte__(self, other):
-        return self.f >= other.f
+    # Append to the file
+    with open(file_name, "a") as file:
+        file.write(string)
 
 
 if __name__ == "__main__":
