@@ -1,6 +1,9 @@
 > Author: Lorenzo D. Moon
+
 > Professor: Dr. Anthony Rhodes
+
 > Course: CS-441
+
 > Assignment: Programming Assignment 1 - Sliding Tiles
 
 # Sliding Tiles
@@ -53,16 +56,16 @@ python3 sliding_tiles.py -r
 ```
 
 #### Options for Solve Mode
--h, --help: Show help message
--v, --verbose: Show the steps taken to solve the puzzle, use twice for deeper verbosity
--r, --random: Use a random starting point
--s, --size: Set the size of the puzzle (Optional, only used for -r flag, and -g flag)
+- -h, --help: Show help message
+- -v, --verbose: Show the steps taken to solve the puzzle, use twice for deeper verbosity
+- -r, --random: Use a random starting point
+- -s, --size: Set the size of the puzzle (Optional, only used for -r flag, and -g flag)
             Size calculated automatically on user input
--H, --heuristic: Set the heuristic function to use (Optional, defaults to misplaced)
+- -H, --heuristic: Set the heuristic function to use (Optional, defaults to misplaced)
                  1 misplaced
                  2 manhattan, 
                  3 pnld (porque no los dos, misplaced + manhattan)
--a, --algorithm: Set the search algorithm to use (Optional, defaults to best first)
+- -a, --algorithm: Set the search algorithm to use (Optional, defaults to best first)
                  1 best first
                  2 a*
 
