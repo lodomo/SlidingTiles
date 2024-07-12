@@ -64,7 +64,6 @@ def main(argv):
                 file.write(f"Size: {SIZE}\n")
                 file.write(f"Average number of steps: {avg}\n\n")
 
-
     return
 
 

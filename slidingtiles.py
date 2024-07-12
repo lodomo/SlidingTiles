@@ -32,7 +32,7 @@ def main(argv):
 
 
 def process_command_line(argv):
-    options = "hvsrH:a:g:"
+    options = "hvs:rH:a:g:"
     DEFAULT_SIZE = 9
     HEURISTICS = [h1_misplaced, h2_manhattan, h3_pnld]
     ALGORITHMS = [best_first_search, a_star]
@@ -42,6 +42,7 @@ def process_command_line(argv):
     SETTINGS["Heuristic"] = None  # Heuristic mode
     SETTINGS["Algorithm"] = None  # Algorithm mode
     SETTINGS["solve_state"] = solved_state()
+    run_generator = 0
 
     try:
         opts, args = getopt.getopt(argv, options)
@@ -59,6 +60,7 @@ def process_command_line(argv):
         elif opt in ("-r", "--random"):
             SETTINGS["random"] = True
         elif opt in ("-s", "--size"):
+            print(f"Size: {arg}")
             SETTINGS["size"] = int(arg)
             SETTINGS["solve_state"] = solved_state()
         elif opt in ("-H", "--heuristic"):
@@ -78,14 +80,23 @@ def process_command_line(argv):
                 sys.exit(2)
             SETTINGS["Algorithm"] = ALGORITHMS[algorithm - 1]
         elif opt in ("-g", "--generate"):
-            generate_solvable(int(arg))
-            exit(0)
+            run_generator = int(arg)
+
+    # If the user wants to generate solvable puzzles
+    # Run the generator and exit
+    if run_generator > 0:
+        generate_solvable(run_generator)
+        print(f"Generated {run_generator} solvable puzzles of size {SETTINGS['size']}")
+        print("Check the 'solvable' directory for the puzzles")
+        print("Exiting...")
+        exit(0)
 
     setup_after_command_line()
     return
 
 
 def setup_after_command_line():
+    # Setup the settings after the command line has been processed
     SETTINGS["matrix_dim"] = int(SETTINGS["size"] ** 0.5)
 
     if SETTINGS["matrix_dim"] ** 2 != SETTINGS["size"]:
@@ -109,6 +120,7 @@ def setup_after_command_line():
 
 
 def help():
+    # Print the help message
     perror("Usage: slidingtiles.py [OPTIONS]")
     perror("Options:")
     perror("  -h, --help\t\t\t\tShow this help message")
@@ -129,16 +141,21 @@ def help():
 
 
 def help_simple():
+    # Print a simple help message
     perror("Usage: slidingtiles.py [OPTIONS] See -h for full options")
     pass
 
 
 def verbose(message, level=1):
+    # Print a message if verbose is on
+    # Level 1 is the default level
+    # Level 2 is for more detailed messages
     if SETTINGS["verbose"] >= level:
         perror(message)
 
 
 def perror(message):
+    # Print an error message to stderr
     sys.stderr.write(message)
 
 
@@ -160,6 +177,10 @@ def show_solution(solution):
 
 def set_puzzle():
     # Set the puzzle based on the settings
+    # If random is set, generate a random puzzle
+    # If not, get the puzzle from the user
+    # Check if the puzzle is solvable
+    # Random will always be solvable
     if SETTINGS["random"]:
         return random_puzzle(SETTINGS["size"])
 
@@ -173,6 +194,9 @@ def set_puzzle():
 
 
 def random_puzzle(size):
+    # Generate a random puzzle
+    # Check if the puzzle is solvable
+    # If not, keep generating random puzzles until one is solvable
     puzzle = np.random.permutation(size)
     verbose(f"Random puzzle: {b_replace(puzzle)}\n")
 
@@ -184,6 +208,12 @@ def random_puzzle(size):
 
 
 def user_puzzle():
+    # Get the puzzle from the user
+    # Check if the puzzle is a square number
+    # Check if the puzzle is a permutation of the numbers 0 to n
+    # If not, print an error message and exit
+    # Return the puzzle
+
     user_input = input("Enter the puzzle: ")
 
     # If one input is b convert it to 0
@@ -214,9 +244,11 @@ def user_puzzle():
 
 
 def solvable(puzzle):
+    # Check if the puzzle is solvable
+    # If the number of inversions is even, the puzzle is solvable
+    # If the number of inversions is odd, the puzzle is not solvable
+
     verbose("Start Solvable\n", 2)
-    # Count the number of inversions
-    # If the number of inversons is even, the puzzle is solvable
     inversions = 0
     for i in range(len(puzzle)):
         if puzzle[i] == 0:
@@ -236,6 +268,10 @@ def solvable(puzzle):
 
 
 def h1_misplaced(puzzle):
+    # Misplaced Tiles Heuristic
+    # This will count the number of tiles that are not in the correct position
+    # The blank tile is not counted
+
     misplaced = 0
     for i in range(len(puzzle)):
         # Don't count the blank tile
@@ -252,6 +288,13 @@ def h1_misplaced(puzzle):
 
 
 def h2_manhattan(puzzle):
+    # Manhattan Distance Heuristic
+    # This will calculate the distance of each tile from its correct position
+    # The blank tile is not counted
+    # Find the row and column of the current tile
+    # Find the row and column of the preferred position of the tile
+    # Find the distance between the two positions
+
     distance = 0
     matrix_dim = int(len(puzzle) ** 0.5)
     verbose("(COL,ROW) -> (COL,ROW)\n", 2)
@@ -277,8 +320,13 @@ def h2_manhattan(puzzle):
 def h3_pnld(puzzle):
     # My Heuristic "Porque No Los Dos" PNLD
     # Combines Misplaced Tiles and Manhattan Distance
+    # Return if either heuristic is 0
+    # Otherwise, return the sum of the two heuristics
+
     misplaced = h1_misplaced(puzzle)
     manhattan = h2_manhattan(puzzle)
+    if manhattan == 0 or misplaced == 0:
+        return 0
     pnld = misplaced + manhattan
     verbose(f"PNLD: {pnld}\n")
     return pnld
@@ -286,9 +334,9 @@ def h3_pnld(puzzle):
 
 def b_replace(puzzle, as_matrix=False):
     # This will replace the 0 with a b
-    # If as_matrix is True, the puzzle will be perrored as a matrix
-    # This helps with trouble shooting and debugging to make
-    # sure the moves are happening properly
+    # If as_matrix is True, the puzzle will be printed as a matrix
+    # This helps with trouble shooting and debugging to make sure the
+    # moves are happening properly
     if as_matrix:
         dim = SETTINGS["matrix_dim"]
         string = ""
@@ -312,9 +360,11 @@ def b_replace(puzzle, as_matrix=False):
 
 
 def legal_moves(puzzle):
-    # This returns all legal moves. It does not account for any heuristics.
+    # This returns all legal moves. *It does not account for any heuristics.*
     # It simply returns all the possible moves that can be made from this
     # Position
+    # The moves are returned as a list of puzzles
+    # The moves are returned in the order of up, down, left, right
     dim = SETTINGS["matrix_dim"]
     moves = []
     # Find all the combinations of the puzzle for a single move
@@ -361,13 +411,15 @@ def legal_moves(puzzle):
 
 def solved_state():
     # Returns the solved state of the puzzle.
-    # Not hardcoded to support different sizes for the puzzle
     solved = np.array(range(1, SETTINGS["size"] + 1))
     solved[SETTINGS["size"] - 1] = 0
     return solved
 
 
 def lazy_hash(puzzle):
+    # This is used for the dictionary of visited nodes
+    # It will convert the puzzle to a string
+    # Since each puzzle is unique, the string will be unique
     str = ""
     for i in range(len(puzzle)):
         str += "{:02d}".format(puzzle[i])
@@ -375,6 +427,9 @@ def lazy_hash(puzzle):
 
 
 def generate_report(puzzle, solution):
+    # Generate a report of the solution
+    # Directory will be ./reports/Algorithm_Heuristic_Size
+    # The file will be named Puzzle_Steps.txt
     dir = "./reports"
     dir += f"/{SETTINGS['Algorithm'].__name__}"
     dir += f"_{SETTINGS['Heuristic'].__name__}"
@@ -403,6 +458,11 @@ def generate_report(puzzle, solution):
 
 
 def generate_solvable(n):
+    # Generate n solvable puzzles
+    # The puzzles will be saved in the solvable directory
+    # The puzzles will be named after the puzzle itself
+    # The puzzle will be saved as a string with space delimiters
+
     # Create directory called "solvable" if it doesn't exist
     if not os.path.exists("solvable"):
         os.makedirs("solvable")
@@ -519,14 +579,16 @@ def a_star(puzzle, solve_state, h_func):
 
 
 class Node:
+    # Node class for the A* and Best First Search algorithms
     def __init__(self, state, h, parent=None, g=0):
-        self.parent = parent
-        self.state = state
-        self.h = h
-        self.g = g
-        self.f = g + h
+        self.parent = parent  # Parent node
+        self.state = state  # Current state of the puzzle
+        self.h = h  # Heuristic value
+        self.g = g  # Steps taken to get to this node(not used in BFS)
+        self.f = g + h  # The actual value of the node
         return
 
+    # Comparison operators
     def __lt__(self, other):
         return self.f < other.f
 

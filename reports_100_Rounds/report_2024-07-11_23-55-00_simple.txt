@@ -1,0 +1,33 @@
+Lazy Report: 2024-07-11_23-55-00
+--------------------
+
+Algorithm: Best First Search
+Heuristic: Misplaced Tiles
+Size: 9
+Average number of steps: 88.14
+
+Algorithm: Best First Search
+Heuristic: Manhattan Distance
+Size: 9
+Average number of steps: 60.62
+
+Algorithm: Best First Search
+Heuristic: PNLD Distance
+Size: 9
+Average number of steps: 58.94
+
+Algorithm: A*
+Heuristic: Misplaced Tiles
+Size: 9
+Average number of steps: 23.2
+
+Algorithm: A*
+Heuristic: Manhattan Distance
+Size: 9
+Average number of steps: 23.2
+
+Algorithm: A*
+Heuristic: PNLD Distance
+Size: 9
+Average number of steps: 23.68
+
