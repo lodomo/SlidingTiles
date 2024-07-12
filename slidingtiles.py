@@ -1,7 +1,7 @@
 ###############################################################################
 #
 # Author: Lorenzo D. Moon
-# Professor: Anthony Rhodes
+# Professor: Dr. Anthony Rhodes
 # Course: CS-441
 # Assignment: Programming Assignment 1
 # Description: Solves the Sliding Tiles problem using 3 different heuristic
@@ -19,38 +19,16 @@ import sys
 
 import numpy as np
 
-SETTINGS = {}
-MATRIX_DIM = 3
+SETTINGS = {}  # Global settings dictionary
 
 
 def main(argv):
     process_command_line(argv)
     puzzle = set_puzzle()
-
-    solution = SETTINGS["Algorithm"](
-        puzzle, SETTINGS["solve_state"], SETTINGS["Heuristic"]
-    )
-
-    if SETTINGS["verbose"] > 1:
-        for step in solution:
-            print(f"{b_replace(step)}")
-
-    print(f"Total Steps: {len(solution)}")
-    generate_report(puzzle, solution)
+    solution = get_solution(puzzle)
+    show_solution(solution)  # If verbose is set
+    generate_report(puzzle, solution)  # Generate data file of the solution
     exit(0)
-
-
-def set_puzzle():
-    if SETTINGS["random"]:
-        return random_puzzle(SETTINGS["size"])
-
-    puzzle = user_puzzle()
-
-    if solvable(puzzle) is False:
-        print("The puzzle is not solvable. Exiting...")
-        exit(1)
-
-    return puzzle
 
 
 def process_command_line(argv):
@@ -86,17 +64,17 @@ def process_command_line(argv):
         elif opt in ("-H", "--heuristic"):
             heuristic = int(arg)
             if heuristic < 1 or heuristic > len(HEURISTICS):
-                print(f"Invalid heuristic: {arg}")
+                perror(f"Invalid heuristic: {arg}")
                 help_simple()
-                print("Run with -h for help")
+                perror("Run with -h for help")
                 sys.exit(2)
             SETTINGS["Heuristic"] = HEURISTICS[heuristic - 1]
         elif opt in ("-a", "--algorithm"):
             algorithm = int(arg)
             if algorithm < 1 or algorithm > len(ALGORITHMS):
-                print(f"Invalid algorithm: {arg}")
+                perror(f"Invalid algorithm: {arg}")
                 help_simple()
-                print("Run with -h for help")
+                perror("Run with -h for help")
                 sys.exit(2)
             SETTINGS["Algorithm"] = ALGORITHMS[algorithm - 1]
         elif opt in ("-g", "--generate"):
@@ -111,7 +89,7 @@ def setup_after_command_line():
     SETTINGS["matrix_dim"] = int(SETTINGS["size"] ** 0.5)
 
     if SETTINGS["matrix_dim"] ** 2 != SETTINGS["size"]:
-        print("Invalid size: Size is not a square number")
+        perror("Invalid size: Size is not a square number")
         exit(1)
 
     if SETTINGS["Heuristic"] is None:
@@ -131,33 +109,67 @@ def setup_after_command_line():
 
 
 def help():
-    print("Usage: slidingtiles.py [OPTIONS]")
-    print("Options:")
-    print("  -h, --help\t\t\t\tShow this help message")
-    print("  -v, --verbose\t\t\t\tIncrease verbosity (up to 2 times)")
-    print("  -r, --random\t\t\t\tGenerate a random puzzle")
-    print("  -s, --size [N]\t\t\tSet the size of the puzzle (default 9)")
-    print("  -H, --heuristic [1,2,3]\t\tChoose the heuristic function")
-    print("      1: Misplaced Tiles (default)")
-    print("      2: Manhattan Distance")
-    print("      3: TBD")
-    print("  -a, --algorithm [1,2]\t\tChoose the algorithm")
-    print("      1: Best-First Search (default)")
-    print("      2: A* algorithm")
-    print("Example: slidingtiles.py -v -v -r -H 2")
-    print("Verbose:2, Random puzzle, Manhattan Distance, Best-First Search")
-    print("Supports < some_puzzle.txt for input")
+    perror("Usage: slidingtiles.py [OPTIONS]")
+    perror("Options:")
+    perror("  -h, --help\t\t\t\tShow this help message")
+    perror("  -v, --verbose\t\t\t\tIncrease verbosity (up to 2 times)")
+    perror("  -r, --random\t\t\t\tGenerate a random puzzle")
+    perror("  -s, --size [N]\t\t\tSet the size of the puzzle (default 9)")
+    perror("  -H, --heuristic [1,2,3]\t\tChoose the heuristic function")
+    perror("      1: Misplaced Tiles (default)")
+    perror("      2: Manhattan Distance")
+    perror("      3: TBD")
+    perror("  -a, --algorithm [1,2]\t\tChoose the algorithm")
+    perror("      1: Best-First Search (default)")
+    perror("      2: A* algorithm")
+    perror("Example: slidingtiles.py -v -v -r -H 2")
+    perror("Verbose:2, Random puzzle, Manhattan Distance, Best-First Search")
+    perror("Supports < some_puzzle.txt for input")
     exit(0)
 
 
 def help_simple():
-    print("Usage: slidingtiles.py [OPTIONS] See -h for full options")
+    perror("Usage: slidingtiles.py [OPTIONS] See -h for full options")
     pass
 
 
 def verbose(message, level=1):
     if SETTINGS["verbose"] >= level:
-        sys.stderr.write(message)
+        perror(message)
+
+
+def perror(message):
+    sys.stderr.write(message)
+
+
+def get_solution(puzzle):
+    # Grab the algorithm from the settings and run it
+    # For the args, we pass the puzzle, the solved state, and the heuristic
+    # These are all generated from process_command_line
+    return SETTINGS["Algorithm"](puzzle, SETTINGS["solve_state"], SETTINGS["Heuristic"])
+
+
+def show_solution(solution):
+    # Show the solution to the user and final step count if verbose is on
+    if SETTINGS["verbose"] > 1:
+        for step in solution:
+            print(f"{b_replace(step)}")
+        print(f"Total Steps: {len(solution)}")
+    return
+
+
+def set_puzzle():
+    # Set the puzzle based on the settings
+    if SETTINGS["random"]:
+        return random_puzzle(SETTINGS["size"])
+
+    puzzle = user_puzzle()
+
+    if solvable(puzzle) is False:
+        perror("The puzzle is not solvable. Exiting...")
+        exit(1)
+
+    return puzzle
 
 
 def random_puzzle(size):
@@ -182,12 +194,12 @@ def user_puzzle():
 
     # Check if the input is a square number
     if int(len(puzzle) ** 0.5) ** 2 != len(puzzle):
-        print("Invalid puzzle: Puzzle is not a square")
+        perror("Invalid puzzle: Puzzle is not a square")
         exit(1)
 
     # Check if the input is a permutation of the numbers 0 to n
     if sorted(puzzle) != list(range(len(puzzle))):
-        print("Invalid puzzle: Not a permutation of b, 1 to n")
+        perror("Invalid puzzle: Not a permutation of b, 1 to n")
         exit(1)
 
     # Update global settings
@@ -274,7 +286,7 @@ def h3_pnld(puzzle):
 
 def b_replace(puzzle, as_matrix=False):
     # This will replace the 0 with a b
-    # If as_matrix is True, the puzzle will be printed as a matrix
+    # If as_matrix is True, the puzzle will be perrored as a matrix
     # This helps with trouble shooting and debugging to make
     # sure the moves are happening properly
     if as_matrix:
@@ -384,7 +396,9 @@ def generate_report(puzzle, solution):
         f.write(f"{b_replace(puzzle)} ")
         for step in solution:
             f.write(f"{b_replace(step)} ")
-    print(f"Report generated: {filename}")
+
+    # Print to stderr
+    sys.stderr.write(f"Report generated: {filename}\n")
     return
 
 
